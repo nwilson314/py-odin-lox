@@ -4,6 +4,9 @@ import "core:os"
 import "core:fmt"
 import "core:strings"
 
+had_error := false
+scanner: Scanner
+
 main :: proc() {
     args := os.args[1:]
     fmt.printfln("Args: %v", args)
@@ -42,12 +45,27 @@ run_prompt :: proc() {
         }
         input := strings.trim_space(string(buf[:num_bytes]))
         run(input)
+        had_error = false
     }
 }
 
 run :: proc(source: string) {
-    scanner := Scanner {
-        source = source
+    scanner = create_scanner(source)
+    tokens := scan_tokens()
+    if had_error {
+        os.exit(65)
     }
-    tokens := scan_tokens(scanner)
+
+    for token in tokens {
+        fmt.printfln("%v", token)
+    }
+}
+
+error :: proc(line: int, message: string) {
+    report(line, "", message)
+}
+
+report :: proc(line: int, whr: string, message: string) {
+    fmt.eprintfln("[line %v] Error %v: %v", line, whr, message)
+    had_error = true
 }
