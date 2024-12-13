@@ -80,6 +80,7 @@ token_to_string :: proc(token: Token) -> string {
 
 scan_tokens :: proc() -> [dynamic]Token {
     for !is_at_end() {
+        scanner.start = scanner.current
         scan_token()
     }
 
