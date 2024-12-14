@@ -1,17 +1,3 @@
-# OLox
+# PyLox/Olox
 
-## Building and Running
-Build: 
-```bash
-odin build src -out:olox -o:speed
-```
-
-Run - REPL:
-````bash
-./olox
-````
-
-Run - File:
-````bash
-./olox path/to/file
-````
+I decided to implement the Tree-walk interpreter in Python instead of Odin. The code is in the tree_walk directory. The code is based on the book "Crafting Interpreters" by Robert Nystrom. Much of the object oriented design for the tree-walk interpreter was not a great fit for Odin so I decided to use Python instead. That said, I will be porting the second half of the book to Odin for the bytecode interpreter.
