@@ -4,6 +4,7 @@ from ast_printer import AstPrinter
 from error import Error
 from parser import Parser
 from scanner import Scanner
+from interpreter import Interpreter
 
 class Lox:
     def __init__(self):
@@ -16,6 +17,8 @@ class Lox:
 
         if Error.had_error:
             sys.exit(65)
+        if Error.had_runtime_error:
+            sys.exit(70)
 
     def run_prompt(self):
         while True:
@@ -30,14 +33,15 @@ class Lox:
         scanner = Scanner(source)
         tokens = scanner.scan_tokens()
         parser = Parser(tokens)
+        interpreter = Interpreter()
 
         expression = parser.parse()
 
         if Error.had_error or expression is None:
             return
 
-        print(AstPrinter().print(expression))
-
+        # print(AstPrinter().print(expression))
+        interpreter.interpret(expression)
 
 if __name__ == "__main__":
     lox = Lox()

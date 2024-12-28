@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any
 
 from error import Error
@@ -153,7 +154,7 @@ class Scanner:
             while self.is_digit(self.peek()):
                 self.advance()
 
-        value = float(self.source[self.start:self.current])
+        value = Decimal(self.source[self.start:self.current])
         self.add_token(TokenType.NUMBER, value)
 
     def identifier_eval(self) -> None:
