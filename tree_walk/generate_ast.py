@@ -7,24 +7,38 @@ class GenerateAST:
 
     def generate_ast(self, output_dir: str):
         self.define_ast(output_dir, "Expr", [
+            "Assign: Token name, Expr value",
             "Binary: Expr left, Token operator, Expr right",
             "Grouping: Expr expression",
             "Literal: Any value",
             "Unary: Token operator, Expr right",
+            "Variable: Token name",
         ])
 
-    def define_ast(self, output_dir: str, base_name: str, types: list[str]):
+        self.define_ast(output_dir, "Stmt", [
+            "Block: list[Stmt] statements",
+            "Expression: Expr expression",
+            "Print: Expr expression",
+            "Var: Token name, Expr initializer",
+        ],
+        imports=[
+            ("expr", "Expr")
+        ]
+        )
+
+    def define_ast(self, output_dir: str, base_name: str, types: list[str], imports: list[tuple[str, str]]=[]):
         path = f"{output_dir}/{base_name.lower()}.py"
         with open(path, "w") as f:
+            f.write("'''\nThis code is generated automatically by generate_ast.py\n'''\n\n")
             # Imports
             f.write("from abc import ABC, abstractmethod\nfrom typing import Any, Generic, TypeVar\n\n")
-            f.write("from token_type import Token\n\n")
-            f.write("T = TypeVar('T')\n\n")
+            f.write("from token_type import Token\n")
+            for imp in imports:
+                f.write(f"from {imp[0]} import {imp[1]}\n")
+            f.write("\nT = TypeVar('T')\n\n")
             # Abstract base class
             f.write(f"class {base_name}(ABC):\n")
             f.write("\t@abstractmethod\n\tdef accept(self, visitor: 'Visitor[T]') -> T:\n\t\tpass\n\n")
-            
-            f.write("TExpr = TypeVar('TExpr', bound=Expr)\n\n")
 
             # The AST classes
             for type in types:
@@ -55,7 +69,7 @@ class GenerateAST:
 
         # Accept method
         f.write(f"\tdef accept(self, visitor: 'Visitor[T]') -> T:\n")
-        f.write(f"\t\treturn visitor.visit_{class_name.lower()}_expr(self)\n\n")
+        f.write(f"\t\treturn visitor.visit_{class_name.lower()}_{base_name.lower()}(self)\n\n")
 
     def define_visitor(self, f: TextIOWrapper, base_name: str, types: list[str]):
         class_names = ", ".join([type.split(":")[0].strip() for type in types])
@@ -63,7 +77,7 @@ class GenerateAST:
         for type in types:
             split_type = type.split(":")
             class_name = split_type[0].strip()
-            f.write(f"\t@abstractmethod\n\tdef visit_{class_name.lower()}_expr(self, expr: {class_name}) -> T:\n\t\tpass\n\n")
+            f.write(f"\t@abstractmethod\n\tdef visit_{class_name.lower()}_{base_name.lower()}(self, expr: {class_name}) -> T:\n\t\tpass\n\n")
 
 if __name__ == "__main__":
     args = sys.argv[1:]

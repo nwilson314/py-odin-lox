@@ -1,18 +1,20 @@
 from decimal import Decimal
 from typing import Any
 
-from error import RunTimeError, Error
-from expr import Visitor, Literal, Grouping, Expr, Unary, Binary
+from error import RunTimeError, Error, ParseError
+from environment import Environment
+from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign
+from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block
 from token_type import TokenType, Token
 
-class Interpreter(Visitor[Any]):
+class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
     def __init__(self):
-        pass
+        self.environment = Environment()
 
-    def interpret(self, expr: Expr) -> None:
+    def interpret(self, statements: list[Stmt]) -> None:
         try:
-            value = self.evaluate(expr)
-            print(value)
+            for statement in statements:
+                self.execute(statement)
         except RunTimeError as error:
             Error.runtime_error(error)
 
@@ -73,8 +75,45 @@ class Interpreter(Visitor[Any]):
             
         return None # unreachable
 
+    def visit_expression_stmt(self, stmt: Expression) -> None:
+        self.evaluate(stmt.expression)
+
+    def visit_print_stmt(self, stmt: Print) -> None:
+        value = self.evaluate(stmt.expression)
+        print(self.stringify(value))
+
+    def visit_var_stmt(self, stmt: Var) -> None:
+        value = None
+        if stmt.initializer != None:
+            value = self.evaluate(stmt.initializer)
+
+        self.environment.define(stmt.name.lexeme, value)
+
+    def visit_variable_expr(self, expr: Variable) -> Any:
+        return self.environment.get(expr.name)
+
+    def visit_assign_expr(self, expr: Assign) -> Any:
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
+
+    def visit_block_stmt(self, stmt: Block) -> None:
+        self.execute_block(stmt.statements, Environment(self.environment))
+
     def evaluate(self, expr: Expr) -> Any:
         return expr.accept(self)
+
+    def execute(self, stmt: Stmt) -> None:
+        stmt.accept(self)
+
+    def execute_block(self, statements: list[Stmt], environment: Environment) -> None:
+        previous = self.environment
+        try:
+            self.environment = environment
+            for statement in statements:
+                self.execute(statement)
+        finally:
+            self.environment = previous
 
     def is_truthy(self, value: Any) -> bool:
         if value is None: return False
@@ -97,3 +136,9 @@ class Interpreter(Visitor[Any]):
             return
 
         raise RunTimeError(operator, "Operands must be numbers.")
+
+    def stringify(self, object):
+        if object is None:
+            return "nil"
+        else:
+            return str(object)

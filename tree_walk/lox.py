@@ -8,7 +8,7 @@ from interpreter import Interpreter
 
 class Lox:
     def __init__(self):
-        pass
+        self.interpreter = Interpreter()
 
     def run_file(self, path: str):
         with open(path, "r") as f:
@@ -26,22 +26,24 @@ class Lox:
                 line = input("> ")
             except:
                 break
-            self.run(line)
+            try:
+                self.run(line)
+            except Exception as e:
+                print(e)
             Error.had_error = False
 
     def run(self, source: str):
         scanner = Scanner(source)
         tokens = scanner.scan_tokens()
         parser = Parser(tokens)
-        interpreter = Interpreter()
 
-        expression = parser.parse()
+        statements = parser.parse()
 
-        if Error.had_error or expression is None:
+        if Error.had_error:
             return
 
         # print(AstPrinter().print(expression))
-        interpreter.interpret(expression)
+        self.interpreter.interpret(statements)
 
 if __name__ == "__main__":
     lox = Lox()
