@@ -1,5 +1,5 @@
-from expr import Expr, Binary, Grouping, Unary, Literal, Variable, Assign
-from stmt import Stmt, Print, Expression, Var, Block
+from expr import Expr, Binary, Grouping, Unary, Literal, Variable, Assign, Logical
+from stmt import Stmt, Print, Expression, Var, Block, If, While
 from token_type import Token, TokenType
 
 from error import Error, ParseError
@@ -33,21 +33,87 @@ class Parser:
             return None
 
     def statement(self) -> Stmt:
+        if self.match(TokenType.FOR):
+            return self.for_statement()
+        if self.match(TokenType.IF):
+            return self.if_statement()
         if self.match(TokenType.PRINT):
             return self.print_statement()
+        if self.match(TokenType.WHILE):
+            return self.while_statement()
         if self.match(TokenType.LEFT_BRACE):
             return Block(self.block())
         return self.expression_statement()
 
+    def for_statement(self) -> Stmt:
+        self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'.")
+
+        initializer = None
+        if self.match(TokenType.SEMICOLON):
+            initializer = None
+        elif self.match(TokenType.VAR):
+            initializer = self.var_declaration()
+        else:
+            initializer = self.expression_statement()
+
+        condition = None
+        if not self.check(TokenType.SEMICOLON):
+            condition = self.expression()
+        
+        self.consume(TokenType.SEMICOLON, "Expected ';' after loop condition.")
+
+        increment = None
+        if not self.check(TokenType.RIGHT_PAREN):
+            increment = self.expression()
+        
+        self.consume(TokenType.RIGHT_PAREN, "Expected ')' after for clauses.")
+
+        body = self.statement()
+
+        if increment is not None:
+            body = Block([body, Expression(increment)])
+
+        if condition is None:
+            condition = Literal(True)
+
+        body = While(condition, body)
+
+        if initializer is not None:
+            body = Block([initializer, body])
+
+        return body
+
+    def if_statement(self) -> Stmt:
+        self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'if'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expected ')' after if condition.")
+
+        then_branch = self.statement()
+        else_branch = None
+
+        if self.match(TokenType.ELSE):
+            else_branch = self.statement()
+
+        return If(condition, then_branch, else_branch)
+
     def print_statement(self) -> Stmt:
         value = self.expression()
-        self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        self.consume(TokenType.SEMICOLON, "Expected ';' after value.")
         return Print(value)
     
     def expression_statement(self) -> Stmt:
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expected ';' after expression.")
         return Expression(expr)
+
+    def while_statement(self) -> Stmt:
+        self.consume(TokenType.LEFT_PAREN, "Expected '(' after 'while'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expected ')' after while condition.")
+
+        body = self.statement()
+
+        return While(condition, body)
 
     def block(self) -> list[Stmt]:
         statements = []
@@ -57,7 +123,7 @@ class Parser:
         return statements
 
     def assignment(self) -> Expr:
-        expr = self.equality()
+        expr = self.logical_or()
 
         if self.match(TokenType.EQUAL):
             equals = self.previous()
@@ -68,6 +134,24 @@ class Parser:
                 return Assign(name, value)
             self.raise_error(equals, "Invalid assignment target.")
 
+        return expr
+
+    def logical_or(self) -> Expr:
+        expr = self.logical_and()
+
+        while self.match(TokenType.OR):
+            operator = self.previous()
+            right = self.logical_and()
+            expr = Logical(expr, operator, right)
+        return expr
+
+    def logical_and(self) -> Expr:
+        expr = self.equality()
+
+        while self.match(TokenType.AND):
+            operator = self.previous()
+            right = self.equality()
+            expr = Logical(expr, operator, right)
         return expr
 
     def var_declaration(self) -> Stmt:

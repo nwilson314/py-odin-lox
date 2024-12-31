@@ -3,8 +3,8 @@ from typing import Any
 
 from error import RunTimeError, Error, ParseError
 from environment import Environment
-from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign
-from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block
+from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign, Logical
+from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block, If, While
 from token_type import TokenType, Token
 
 class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
@@ -99,6 +99,26 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
 
     def visit_block_stmt(self, stmt: Block) -> None:
         self.execute_block(stmt.statements, Environment(self.environment))
+
+    def visit_if_stmt(self, stmt: If) -> None:
+        if self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch != None:
+            self.execute(stmt.else_branch)
+
+    def visit_logical_expr(self, expr: Logical) -> Any:
+        left = self.evaluate(expr.left)
+
+        if expr.operator.token_type == TokenType.OR:
+            if self.is_truthy(left): return left
+        else:
+            if not self.is_truthy(left): return left
+
+        return self.evaluate(expr.right)
+
+    def visit_while_stmt(self, stmt: While) -> None:
+        while self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.body)
 
     def evaluate(self, expr: Expr) -> Any:
         return expr.accept(self)

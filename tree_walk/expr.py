@@ -45,6 +45,15 @@ class Literal(Expr):
 	def accept(self, visitor: 'Visitor[T]') -> T:
 		return visitor.visit_literal_expr(self)
 
+class Logical(Expr):
+	def __init__(self, left: Expr, operator: Token, right: Expr):
+		self.left = left
+		self.operator = operator
+		self.right = right
+
+	def accept(self, visitor: 'Visitor[T]') -> T:
+		return visitor.visit_logical_expr(self)
+
 class Unary(Expr):
 	def __init__(self, operator: Token, right: Expr):
 		self.operator = operator
@@ -75,6 +84,10 @@ class Visitor(Generic[T]):
 
 	@abstractmethod
 	def visit_literal_expr(self, expr: Literal) -> T:
+		pass
+
+	@abstractmethod
+	def visit_logical_expr(self, expr: Logical) -> T:
 		pass
 
 	@abstractmethod

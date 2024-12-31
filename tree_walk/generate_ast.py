@@ -11,6 +11,7 @@ class GenerateAST:
             "Binary: Expr left, Token operator, Expr right",
             "Grouping: Expr expression",
             "Literal: Any value",
+            "Logical: Expr left, Token operator, Expr right",
             "Unary: Token operator, Expr right",
             "Variable: Token name",
         ])
@@ -18,8 +19,10 @@ class GenerateAST:
         self.define_ast(output_dir, "Stmt", [
             "Block: list[Stmt] statements",
             "Expression: Expr expression",
+            "If: Expr condition, Stmt then_branch, Stmt else_branch",
             "Print: Expr expression",
             "Var: Token name, Expr initializer",
+            "While: Expr condition, Stmt body",
         ],
         imports=[
             ("expr", "Expr")
