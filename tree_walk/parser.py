@@ -1,5 +1,5 @@
-from expr import Expr, Binary, Grouping, Unary, Literal, Variable, Assign, Logical
-from stmt import Stmt, Print, Expression, Var, Block, If, While
+from expr import Expr, Binary, Grouping, Unary, Literal, Variable, Assign, Logical, Call
+from stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return
 from token_type import Token, TokenType
 
 from error import Error, ParseError
@@ -25,6 +25,8 @@ class Parser:
 
     def declaration(self) -> Stmt | None:
         try:
+            if self.match(TokenType.FUN):
+                return self.fun_declaration('function')
             if self.match(TokenType.VAR):
                 return self.var_declaration()
             return self.statement()
@@ -39,6 +41,8 @@ class Parser:
             return self.if_statement()
         if self.match(TokenType.PRINT):
             return self.print_statement()
+        if self.match(TokenType.RETURN):
+            return self.return_statement()
         if self.match(TokenType.WHILE):
             return self.while_statement()
         if self.match(TokenType.LEFT_BRACE):
@@ -100,6 +104,14 @@ class Parser:
         value = self.expression()
         self.consume(TokenType.SEMICOLON, "Expected ';' after value.")
         return Print(value)
+
+    def return_statement(self) -> Stmt:
+        keyword = self.previous()
+        value = None
+        if not self.check(TokenType.SEMICOLON):
+            value = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expected ';' after return value.")
+        return Return(keyword, value)
     
     def expression_statement(self) -> Stmt:
         expr = self.expression()
@@ -153,6 +165,22 @@ class Parser:
             right = self.equality()
             expr = Logical(expr, operator, right)
         return expr
+
+    def fun_declaration(self, kind: str) -> Function:
+        name = self.consume(TokenType.IDENTIFIER, f"Expected {kind} name.")
+        self.consume(TokenType.LEFT_PAREN, f"Expected '(' after {kind} name.")
+        parameters = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            parameters.append(self.consume(TokenType.IDENTIFIER, "Expected parameter name."))
+            while self.match(TokenType.COMMA):
+                if len(parameters) >= 255:
+                    self.raise_error(self.peek(), "Can't have more than 255 parameters.")
+                parameters.append(self.consume(TokenType.IDENTIFIER, "Expected parameter name."))
+        self.consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters.")
+
+        self.consume(TokenType.LEFT_BRACE, f"Expected '{{' after {kind} body.")
+        body = self.block()
+        return Function(name, parameters, body)
 
     def var_declaration(self) -> Stmt:
         name = self.consume(TokenType.IDENTIFIER, "Expected variable name.")
@@ -226,7 +254,30 @@ class Parser:
             right = self.unary()
             return Unary(operator, right)
         
-        return self.primary()
+        return self.call()
+
+    def call(self) -> Expr:
+        expr = self.primary()
+
+        while True:
+            if self.match(TokenType.LEFT_PAREN):
+                expr = self.finish_call(expr)
+            else:
+                break
+        return expr
+
+    def finish_call(self, callee: Expr) -> Expr:
+        arguments = []
+
+        if not self.check(TokenType.RIGHT_PAREN):
+            arguments.append(self.expression())
+            while self.match(TokenType.COMMA):
+                if len(arguments) >= 255:
+                    self.raise_error(self.peek(), "Can't have more than 255 arguments.")
+                arguments.append(self.expression())
+        
+        paren = self.consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments.")
+        return Call(callee, paren, arguments)
 
     def primary(self) -> Expr:
         """

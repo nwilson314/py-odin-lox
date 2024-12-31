@@ -1,15 +1,18 @@
 from decimal import Decimal
 from typing import Any
 
-from error import RunTimeError, Error, ParseError
+from error import RunTimeError, Error, ReturnError
 from environment import Environment
-from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign, Logical
-from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block, If, While
+from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign, Logical, Call
+from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block, If, While, Function, Return
 from token_type import TokenType, Token
+from lox_callable import LoxCallable, Clock, LoxFunction
 
 class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
     def __init__(self):
-        self.environment = Environment()
+        self.globals = Environment()
+        self.globals.define("clock", Clock())
+        self.environment = self.globals
 
     def interpret(self, statements: list[Stmt]) -> None:
         try:
@@ -119,6 +122,34 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
     def visit_while_stmt(self, stmt: While) -> None:
         while self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.body)
+
+    def visit_call_expr(self, expr: Call) -> Any:
+        callee = self.evaluate(expr.callee)
+
+        arguments = []
+        for argument in expr.arguments:
+            arguments.append(self.evaluate(argument))
+
+        if not isinstance(callee, LoxCallable):
+            raise RunTimeError(expr.paren, "Can only call functions and classes.")
+
+        function: LoxCallable = callee
+
+        if len(arguments) != function.arity():
+            raise RunTimeError(expr.paren, f"Expected {function.arity()} arguments but got {len(arguments)}.")
+
+        return function.call(self, arguments)
+
+    def visit_function_stmt(self, stmt: Function) -> None:
+        function = LoxFunction(stmt, self.environment)
+        self.environment.define(stmt.name.lexeme, function)
+
+    def visit_return_stmt(self, stmt: Return) -> None:
+        value = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value)
+
+        raise ReturnError(value)
 
     def evaluate(self, expr: Expr) -> Any:
         return expr.accept(self)

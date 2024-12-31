@@ -1,4 +1,4 @@
-from types import ClassMethodDescriptorType
+from typing import Any
 from token_type import Token, TokenType
 
 class ParseError(Exception):
@@ -11,6 +11,17 @@ class RunTimeError(RuntimeError):
         super().__init__(message)
         self.message = message
         self.token = token
+
+class ReturnError(RunTimeError):
+    """
+    This "error" isn't really an error. It is purely used to signal a return from a function to the interpreter.
+    As such, we are able to use the Python call stack for control flow to "break out of" functions.
+
+    It probably shouldn't be here, but it is.
+    """
+    def __init__(self, value: Any):
+        super().__init__(None, "")
+        self.value = value
 
 class Error:
     had_error = False
