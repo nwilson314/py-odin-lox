@@ -5,6 +5,7 @@ from error import Error
 from parser import Parser
 from scanner import Scanner
 from interpreter import Interpreter
+from resolver import Resolver
 
 class Lox:
     def __init__(self):
@@ -40,6 +41,14 @@ class Lox:
         statements = parser.parse()
 
         if Error.had_error:
+            # stop if there was a syntax error
+            return
+        
+        resolver = Resolver(self.interpreter)
+        resolver.resolve_statements(statements)
+
+        if Error.had_error:
+            # stop if there was a resolution error
             return
 
         # print(AstPrinter().print(expression))

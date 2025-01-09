@@ -29,3 +29,15 @@ fun makeCounter() {
 var counter = makeCounter();
 counter(); // "1".
 counter(); // "2".
+
+// Testing function scoping
+var a = "global";
+{
+  fun showA() {
+    print a;
+  }
+
+  showA(); // "global"
+  var a = "block";
+  showA(); // should be "global" but is "block" when scoping is not implemented correctly
+}

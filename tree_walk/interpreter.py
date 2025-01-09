@@ -13,6 +13,7 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
         self.globals = Environment()
         self.globals.define("clock", Clock())
         self.environment = self.globals
+        self.locals: dict[Expr, int] = {}
 
     def interpret(self, statements: list[Stmt]) -> None:
         try:
@@ -93,11 +94,15 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
         self.environment.define(stmt.name.lexeme, value)
 
     def visit_variable_expr(self, expr: Variable) -> Any:
-        return self.environment.get(expr.name)
+        return self.lookup_variable(expr.name, expr)
 
     def visit_assign_expr(self, expr: Assign) -> Any:
         value = self.evaluate(expr.value)
-        self.environment.assign(expr.name, value)
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            self.environment.assign_at(distance, expr.name, value)
+        else:
+            self.globals.assign(expr.name, value)
         return value
 
     def visit_block_stmt(self, stmt: Block) -> None:
@@ -165,6 +170,16 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
                 self.execute(statement)
         finally:
             self.environment = previous
+
+    def resolve(self, expr: Expr, depth: int) -> None:
+        self.locals[expr] = depth
+
+    def lookup_variable(self, name: Token, expr: Expr) -> Any:
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            return self.environment.get_at(distance, name.lexeme)
+        else:
+            return self.globals.get(name)
 
     def is_truthy(self, value: Any) -> bool:
         if value is None: return False

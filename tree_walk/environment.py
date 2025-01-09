@@ -16,6 +16,15 @@ class Environment:
             return self.enclosing.get(name)
         raise RunTimeError(name, f"Undefined variable '{name.lexeme}' during get.")
 
+    def get_at(self, distance: int, name: str) -> Any:
+        return self.ancestor(distance).values[name]
+
+    def ancestor(self, distance: int) -> Environment:
+        environment = self
+        for _ in range(distance):
+            environment = environment.enclosing
+        return environment
+
     def define(self, name: str, value: Any) -> None:
         self.values[name] = value
 
@@ -27,3 +36,6 @@ class Environment:
             self.enclosing.assign(name, value)
             return
         raise RunTimeError(name, f"Undefined variable '{name.lexeme}' during assignment.")
+
+    def assign_at(self, distance: int, name: Token, value: Any) -> None:
+        self.ancestor(distance).values[name.lexeme] = value
