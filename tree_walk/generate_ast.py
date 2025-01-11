@@ -15,6 +15,7 @@ class GenerateAST:
             "Literal: Any value",
             "Logical: Expr left, Token operator, Expr right",
             "Set: Expr object, Token name, Expr value",
+            "Super: Token keyword, Token method",
             "This: Token keyword",
             "Unary: Token operator, Expr right",
             "Variable: Token name",
@@ -22,7 +23,7 @@ class GenerateAST:
 
         self.define_ast(output_dir, "Stmt", [
             "Block: list[Stmt] statements",
-            "Class: Token name, list['Function'] methods",
+            "Class: Token name, Variable superclass, list['Function'] methods",
             "Expression: Expr expression",
             "Function: Token name, list[Token] params, list[Stmt] body",
             "If: Expr condition, Stmt then_branch, Stmt else_branch",
@@ -32,11 +33,11 @@ class GenerateAST:
             "While: Expr condition, Stmt body",
         ],
         imports=[
-            ("expr", "Expr")
+            ("expr", ["Expr", "Variable"]),
         ]
         )
 
-    def define_ast(self, output_dir: str, base_name: str, types: list[str], imports: list[tuple[str, str]]=[]):
+    def define_ast(self, output_dir: str, base_name: str, types: list[str], imports: list[tuple[str, list[str]]]=[]):
         path = f"{output_dir}/{base_name.lower()}.py"
         with open(path, "w") as f:
             f.write("'''\nThis code is generated automatically by generate_ast.py\n'''\n\n")
@@ -44,7 +45,7 @@ class GenerateAST:
             f.write("from abc import ABC, abstractmethod\nfrom typing import Any, Generic, TypeVar\n\n")
             f.write("from token_type import Token\n")
             for imp in imports:
-                f.write(f"from {imp[0]} import {imp[1]}\n")
+                f.write(f"from {imp[0]} import {', '.join(imp[1])}\n")
             f.write("\nT = TypeVar('T')\n\n")
             # Abstract base class
             f.write(f"class {base_name}(ABC):\n")

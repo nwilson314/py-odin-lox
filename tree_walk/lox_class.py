@@ -10,9 +10,10 @@ if TYPE_CHECKING:
 
 
 class LoxClass(LoxCallable):
-    def __init__(self, name: str, methods: dict[str, LoxCallable]):
+    def __init__(self, name: str, superclass: LoxClass, methods: dict[str, LoxCallable]):
         self.methods = methods
         self.name = name
+        self.superclass = superclass
     
     def __str__(self):
         return self.name
@@ -25,7 +26,11 @@ class LoxClass(LoxCallable):
         return instance
 
     def find_method(self, name: str) -> LoxFunction | None:
-        return self.methods.get(name, None)
+        if name in self.methods:
+            return self.methods[name]
+        
+        if self.superclass is not None:
+            return self.superclass.find_method(name)
 
     def arity(self) -> int:
         initializer = self.find_method("init")

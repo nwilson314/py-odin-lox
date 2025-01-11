@@ -80,6 +80,14 @@ class Set(Expr):
 	def accept(self, visitor: 'Visitor[T]') -> T:
 		return visitor.visit_set_expr(self)
 
+class Super(Expr):
+	def __init__(self, keyword: Token, method: Token):
+		self.keyword = keyword
+		self.method = method
+
+	def accept(self, visitor: 'Visitor[T]') -> T:
+		return visitor.visit_super_expr(self)
+
 class This(Expr):
 	def __init__(self, keyword: Token):
 		self.keyword = keyword
@@ -133,6 +141,10 @@ class Visitor(Generic[T]):
 
 	@abstractmethod
 	def visit_set_expr(self, expr: Set) -> T:
+		pass
+
+	@abstractmethod
+	def visit_super_expr(self, expr: Super) -> T:
 		pass
 
 	@abstractmethod

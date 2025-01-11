@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 from token_type import Token
-from expr import Expr
+from expr import Expr, Variable
 
 T = TypeVar('T')
 
@@ -23,8 +23,9 @@ class Block(Stmt):
 		return visitor.visit_block_stmt(self)
 
 class Class(Stmt):
-	def __init__(self, name: Token, methods: list['Function']):
+	def __init__(self, name: Token, superclass: Variable, methods: list['Function']):
 		self.name = name
+		self.superclass = superclass
 		self.methods = methods
 
 	def accept(self, visitor: 'Visitor[T]') -> T:

@@ -1,4 +1,4 @@
-from expr import Expr, Binary, Grouping, Unary, Literal, Variable, Assign, Logical, Call, Get, Set, This
+from expr import Expr, Binary, Grouping, Unary, Literal, Variable, Assign, Logical, Call, Get, Set, This, Super
 from stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return, Class
 from token_type import Token, TokenType
 
@@ -172,6 +172,12 @@ class Parser:
 
     def class_declaration(self) -> Stmt:
         name = self.consume(TokenType.IDENTIFIER, "Expected class name.")
+
+        superclass = None
+        if self.match(TokenType.LESS):
+            self.consume(TokenType.IDENTIFIER, "Expected superclass name.")
+            superclass = Variable(self.previous())
+
         self.consume(TokenType.LEFT_BRACE, "Expected '{' after class name.")
 
         methods = []
@@ -179,7 +185,7 @@ class Parser:
             methods.append(self.fun_declaration('method'))
 
         self.consume(TokenType.RIGHT_BRACE, "Expected '}' after class body.")
-        return Class(name, methods)
+        return Class(name, superclass, methods)
 
     def fun_declaration(self, kind: str) -> Function:
         name = self.consume(TokenType.IDENTIFIER, f"Expected {kind} name.")
@@ -308,6 +314,12 @@ class Parser:
 
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
+
+        if self.match(TokenType.SUPER):
+            keyword = self.previous()
+            self.consume(TokenType.DOT, "Expected '.' after 'super'.")
+            method = self.consume(TokenType.IDENTIFIER, "Expected superclass method name.")
+            return Super(keyword, method)
 
         if self.match(TokenType.THIS):
             return This(self.previous())
