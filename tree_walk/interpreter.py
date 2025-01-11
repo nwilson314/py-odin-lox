@@ -3,10 +3,11 @@ from typing import Any
 
 from error import RunTimeError, Error, ReturnError
 from environment import Environment
-from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign, Logical, Call
-from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block, If, While, Function, Return
+from expr import Visitor as ExprVisitor, Literal, Grouping, Expr, Unary, Binary, Variable, Assign, Logical, Call, Get, Set, This
+from stmt import Visitor as StmtVisitor, Expression, Print, Stmt, Var, Block, If, While, Function, Return, Class
 from token_type import TokenType, Token
 from lox_callable import LoxCallable, Clock, LoxFunction
+from lox_class import LoxClass, LoxInstance
 
 class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
     def __init__(self):
@@ -79,6 +80,17 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
             
         return None # unreachable
 
+    def visit_class_stmt(self, stmt: Class) -> None:
+        self.environment.define(stmt.name.lexeme, None)
+
+        methods: dict[str, LoxFunction] = {}
+        for method in stmt.methods:
+            function = LoxFunction(method, self.environment, method.name.lexeme == "init")
+            methods[method.name.lexeme] = function
+
+        klass = LoxClass(stmt.name.lexeme, methods)
+        self.environment.assign(stmt.name, klass)
+
     def visit_expression_stmt(self, stmt: Expression) -> None:
         self.evaluate(stmt.expression)
 
@@ -145,8 +157,29 @@ class Interpreter(ExprVisitor[Any], StmtVisitor[Any]):
 
         return function.call(self, arguments)
 
+    def visit_get_expr(self, expr: Get) -> Any:
+        object = self.evaluate(expr.object)
+
+        if isinstance(object, LoxInstance):
+            return object.get(expr.name)
+
+        raise RunTimeError(expr.name, "Only instances have properties.")
+
+    def visit_set_expr(self, expr: Set) -> Any:
+        object = self.evaluate(expr.object)
+
+        if not isinstance(object, LoxInstance):
+            raise RunTimeError(expr.name, "Only instances have fields.")
+
+        value = self.evaluate(expr.value)
+        object.set(expr.name, value)
+        return value
+
+    def visit_this_expr(self, expr: This) -> Any:
+        return self.lookup_variable(expr.keyword, expr)
+
     def visit_function_stmt(self, stmt: Function) -> None:
-        function = LoxFunction(stmt, self.environment)
+        function = LoxFunction(stmt, self.environment, False)
         self.environment.define(stmt.name.lexeme, function)
 
     def visit_return_stmt(self, stmt: Return) -> None:

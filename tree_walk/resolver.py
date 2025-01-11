@@ -1,8 +1,8 @@
 from enum import Enum
 
 from error import Error
-from expr import Grouping, Visitor as ExprVisitor, Expr, Variable, Assign, Binary, Call, Literal, Unary, Logical
-from stmt import Visitor as StmtVisitor, Block, Stmt, Var, Function, Expression, If, Print, Return, While
+from expr import Grouping, Visitor as ExprVisitor, Expr, Variable, Assign, Binary, Call, Literal, Unary, Logical, Get, Set, This
+from stmt import Visitor as StmtVisitor, Block, Stmt, Var, Function, Expression, If, Print, Return, While, Class
 from token_type import Token
 from interpreter import Interpreter
 
@@ -10,6 +10,13 @@ from interpreter import Interpreter
 class FunctionType(str, Enum):
     NONE = "none"
     FUNCTION = "function"
+    INITIALIZER = "initializer"
+    METHOD = "method"
+
+
+class ClassType(str, Enum):
+    NONE = "none"
+    CLASS = "class"
 
 
 class Resolver(ExprVisitor, StmtVisitor):
@@ -17,12 +24,32 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.interpreter = interpreter
         self.scopes: list[dict[str, bool]] = [] # Stack
         self.current_function = FunctionType.NONE
+        self.current_class = ClassType.NONE
 
     def visit_block_stmt(self, stmt: Block) -> None:
         self.begin_scope()
         self.resolve_statements(stmt.statements)
         self.end_scope()
 
+    def visit_class_stmt(self, stmt: Class) -> None:
+        enclosing_class = self.current_class
+        self.current_class = ClassType.CLASS
+
+        self.declare(stmt.name)
+        self.define(stmt.name)
+
+        self.begin_scope()
+        self.scopes[-1]["this"] = True
+
+        for method in stmt.methods:
+            declaration = FunctionType.METHOD
+            if method.name.lexeme == "init":
+                declaration = FunctionType.INITIALIZER
+            self.resolve_function(method, declaration)
+
+        self.end_scope()
+        self.current_class = enclosing_class
+        
     def visit_expression_stmt(self, stmt: Expression) -> None:
         self.resolve(stmt.expression)
 
@@ -62,6 +89,8 @@ class Resolver(ExprVisitor, StmtVisitor):
         if self.current_function == FunctionType.NONE:
             Error.error(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
+            if self.current_function == FunctionType.INITIALIZER:
+                Error.error(stmt.keyword, "Can't return a value from an initializer.")
             self.resolve(stmt.value)
 
     def visit_while_stmt(self, stmt: While) -> None:
@@ -78,6 +107,9 @@ class Resolver(ExprVisitor, StmtVisitor):
         for argument in expr.arguments:
             self.resolve(argument)
 
+    def visit_get_expr(self, expr: Get) -> None:
+        self.resolve(expr.object)
+
     def visit_grouping_expr(self, expr: Grouping) -> None:
         self.resolve(expr.expression)
 
@@ -87,6 +119,17 @@ class Resolver(ExprVisitor, StmtVisitor):
     def visit_logical_expr(self, expr: Logical) -> None:
         self.resolve(expr.left)
         self.resolve(expr.right)
+
+    def visit_set_expr(self, expr: Set) -> None:
+        self.resolve(expr.value)
+        self.resolve(expr.object)
+
+    def visit_this_expr(self, expr: This) -> None:
+        if self.current_class == ClassType.NONE:
+            Error.error(expr.keyword, "Can't use 'this' outside of a class.")
+            return
+
+        self.resolve_local(expr, expr.keyword)
 
     def visit_unary_expr(self, expr: Unary) -> None:
         self.resolve(expr.right)

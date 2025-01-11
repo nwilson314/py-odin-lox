@@ -22,6 +22,14 @@ class Block(Stmt):
 	def accept(self, visitor: 'Visitor[T]') -> T:
 		return visitor.visit_block_stmt(self)
 
+class Class(Stmt):
+	def __init__(self, name: Token, methods: list['Function']):
+		self.name = name
+		self.methods = methods
+
+	def accept(self, visitor: 'Visitor[T]') -> T:
+		return visitor.visit_class_stmt(self)
+
 class Expression(Stmt):
 	def __init__(self, expression: Expr):
 		self.expression = expression
@@ -81,6 +89,10 @@ class While(Stmt):
 class Visitor(Generic[T]):
 	@abstractmethod
 	def visit_block_stmt(self, expr: Block) -> T:
+		pass
+
+	@abstractmethod
+	def visit_class_stmt(self, expr: Class) -> T:
 		pass
 
 	@abstractmethod

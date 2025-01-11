@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from time import time
@@ -9,6 +10,7 @@ from stmt import Function
 
 if TYPE_CHECKING:
     from interpreter import Interpreter
+    from lox_class import LoxInstance
 
 class LoxCallable(ABC):
     @abstractmethod
@@ -35,12 +37,19 @@ class Clock(LoxCallable):
 
 
 class LoxFunction(LoxCallable):
-    def __init__(self, declaration: Function, closure: Environment):
+    def __init__(self, declaration: Function, closure: Environment, is_initializer: bool = False):
+        self.is_initializer = is_initializer
         self.closure = closure
         self.declaration = declaration
 
+
     def arity(self) -> int:
         return len(self.declaration.params)
+
+    def bind(self, instance: 'LoxInstance'):
+        environment = Environment(self.closure)
+        environment.define("this", instance)
+        return LoxFunction(self.declaration, environment, self.is_initializer)
 
     def call(self, interpreter: 'Interpreter', arguments: list[Any]) -> Any:
         environment = Environment(self.closure)
@@ -51,8 +60,12 @@ class LoxFunction(LoxCallable):
         try:
             interpreter.execute_block(self.declaration.body, environment)
         except ReturnError as return_value:
+            if self.is_initializer:
+                return self.closure.get_at(0, "this")
             return return_value.value
 
+        if self.is_initializer:
+            return self.closure.get_at(0, "this")
         return None
 
     def __str__(self) -> str:
