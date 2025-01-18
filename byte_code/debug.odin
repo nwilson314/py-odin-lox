@@ -21,11 +21,21 @@ disassemble_instruction :: proc(chunk: ^Chunk, offset: int) -> int {
 
     instruction := chunk.code[offset]
 
-    switch OpCode(instruction) {
-        case OpCode.OP_RETURN:
-            return simple_instruction("OP_RETURN", offset)
+    #partial switch OpCode(instruction) {
         case OpCode.OP_CONSTANT:
             return constant_instruction("OP_CONSTANT", chunk, offset)
+        case OpCode.OP_ADD:
+            return simple_instruction("OP_ADD", offset)
+        case OpCode.OP_SUBTRACT:
+            return simple_instruction("OP_SUBTRACT", offset)
+        case OpCode.OP_MULTIPLY:
+            return simple_instruction("OP_MULTIPLY", offset)
+        case OpCode.OP_DIVIDE:
+            return simple_instruction("OP_DIVIDE", offset)
+        case OpCode.OP_NEGATE:
+            return simple_instruction("OP_NEGATE", offset)
+        case OpCode.OP_RETURN:
+            return simple_instruction("OP_RETURN", offset)
         case:
             fmt.printf("Unknown opcode %d\n", instruction)
             return offset + 1
